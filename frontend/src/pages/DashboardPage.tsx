@@ -1,21 +1,21 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { createSubject, getSubjects } from '../api/subjects';
-import { useAuth } from '../context/AuthContext';
-import type { Subject } from '../types';
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { createSubject, getSubjects } from "../api/subjects";
+import { useAuth } from "../context/AuthContext";
+import type { Subject } from "../types";
 
 export function DashboardPage() {
   const navigate = useNavigate();
   const { token } = useAuth();
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [name, setName] = useState('');
+  const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!token) {
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
       return;
     }
 
@@ -25,7 +25,9 @@ export function DashboardPage() {
         const data = await getSubjects(token);
         setSubjects(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unable to load subjects.');
+        setError(
+          err instanceof Error ? err.message : "Unable to load subjects.",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -37,14 +39,16 @@ export function DashboardPage() {
   const handleCreateSubject = async () => {
     if (!name.trim() || !token) return;
     setIsCreating(true);
-    setError('');
+    setError("");
 
     try {
       const created = await createSubject(token, name.trim());
       setSubjects((current) => [created, ...current]);
-      setName('');
+      setName("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to create subject.');
+      setError(
+        err instanceof Error ? err.message : "Unable to create subject.",
+      );
     } finally {
       setIsCreating(false);
     }
@@ -67,8 +71,13 @@ export function DashboardPage() {
             placeholder="Create a subject"
             aria-label="Subject name"
           />
-          <button type="button" className="primary-button" onClick={handleCreateSubject} disabled={isCreating || !name.trim()}>
-            {isCreating ? 'Creating...' : '+ Create Subject'}
+          <button
+            type="button"
+            className="primary-button"
+            onClick={handleCreateSubject}
+            disabled={isCreating || !name.trim()}
+          >
+            {isCreating ? "Creating..." : "+ Create Subject"}
           </button>
         </div>
       </div>
@@ -90,7 +99,11 @@ export function DashboardPage() {
         ) : (
           <div className="subject-grid">
             {subjects.map((subject) => (
-              <Link key={subject.id} to={`/subjects/${subject.id}`} className="subject-card">
+              <Link
+                key={subject.id}
+                to={`/subjects/${subject.id}`}
+                className="subject-card"
+              >
                 <h3>{subject.name}</h3>
                 <span>Open subject</span>
               </Link>

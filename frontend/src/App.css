@@ -128,7 +128,9 @@ h2 {
 .tab {
   border: none;
   border-radius: 12px;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .primary-button,
@@ -267,7 +269,9 @@ h2 {
   border-radius: 22px;
   background: linear-gradient(180deg, #f8fbff 0%, #edf4ff 100%);
   border: 1px solid #dbe8ff;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .subject-card:hover,
@@ -307,7 +311,7 @@ h2 {
   padding: 0.95rem 1rem;
   border: 1px solid var(--stroke);
   border-radius: 14px;
-  background: rgba(255,255,255,0.5);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .document-item strong {
@@ -345,7 +349,7 @@ h2 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.35rem;
-  background: rgba(255,255,255,0.6);
+  background: rgba(255, 255, 255, 0.6);
   border: 1px solid var(--stroke);
   border-radius: 16px;
   padding: 0.35rem;
@@ -364,7 +368,7 @@ h2 {
   padding: 1.5rem;
   border: 1px dashed var(--stroke);
   border-radius: 14px;
-  background: rgba(255,255,255,0.35);
+  background: rgba(255, 255, 255, 0.35);
   color: var(--muted);
   text-align: center;
 }
@@ -373,7 +377,7 @@ h2 {
 .sources-box,
 .quiz-results-box,
 .result-item {
-  background: rgba(255,255,255,0.4);
+  background: rgba(255, 255, 255, 0.4);
   border: 1px solid var(--stroke);
   border-radius: 16px;
   padding: 1rem;
@@ -447,7 +451,7 @@ h2 {
   border: 1px solid var(--stroke);
   border-radius: 18px;
   padding: 1rem;
-  background: rgba(255,255,255,0.4);
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .options-list {
@@ -465,7 +469,7 @@ h2 {
   padding: 0.8rem 0.9rem;
   border: 1px solid var(--stroke);
   border-radius: 12px;
-  background: rgba(255,255,255,0.5);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .option.selected {

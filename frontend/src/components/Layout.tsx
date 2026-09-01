@@ -1,5 +1,5 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Link, NavLink, Outlet } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export function AppLayout() {
   const { user, logout } = useAuth();
@@ -8,7 +8,9 @@ export function AppLayout() {
     <div className="app-shell">
       <header className="topbar">
         <div className="brand-wrap">
-          <Link to="/" className="brand-mark">SP</Link>
+          <Link to="/" className="brand-mark">
+            SP
+          </Link>
           <div>
             <div className="brand-name">StudyPilot</div>
           </div>
@@ -21,7 +23,7 @@ export function AppLayout() {
         </nav>
 
         <div className="user-menu">
-          <div className="user-pill">{user?.name ?? 'Student'}</div>
+          <div className="user-pill">{user?.name ?? "Student"}</div>
           <button type="button" className="secondary-button" onClick={logout}>
             Logout
           </button>

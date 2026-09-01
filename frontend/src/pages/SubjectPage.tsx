@@ -1,43 +1,54 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getDocumentById, getDocuments, createDocument, uploadDocument } from '../api/documents';
-import { getSubjectById } from '../api/subjects';
-import { useAuth } from '../context/AuthContext';
-import type { DocumentSummary } from '../types';
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  getDocumentById,
+  getDocuments,
+  createDocument,
+  uploadDocument,
+} from "../api/documents";
+import { getSubjectById } from "../api/subjects";
+import { useAuth } from "../context/AuthContext";
+import type { DocumentSummary } from "../types";
 
 export function SubjectPage() {
   const navigate = useNavigate();
   const { subjectId } = useParams();
   const { token } = useAuth();
-  const [subjectName, setSubjectName] = useState('');
+  const [subjectName, setSubjectName] = useState("");
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
-  const subjectIdValue = useMemo(() => subjectId ?? '', [subjectId]);
+  const subjectIdValue = useMemo(() => subjectId ?? "", [subjectId]);
 
   useEffect(() => {
     if (!token || !subjectIdValue) {
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
       return;
     }
 
     const loadData = async () => {
       setIsLoading(true);
-      setError('');
+      setError("");
       try {
         const [subject, documentList] = await Promise.all([
           getSubjectById(token, subjectIdValue),
           getDocuments(token),
         ]);
 
-        setSubjectName(subject.name ?? 'Subject');
-        setDocuments(documentList.filter((document) => document.subject.id === subjectIdValue));
+        setSubjectName(subject.name ?? "Subject");
+        setDocuments(
+          documentList.filter(
+            (document) => document.subject.id === subjectIdValue,
+          ),
+        );
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unable to load subject data.');
+        setError(
+          err instanceof Error ? err.message : "Unable to load subject data.",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -49,10 +60,14 @@ export function SubjectPage() {
   const handleCreateDocument = async () => {
     if (!token || !title.trim() || !subjectIdValue) return;
     setIsSubmitting(true);
-    setError('');
+    setError("");
 
     try {
-      const createdDocument = await createDocument(token, title.trim(), subjectIdValue);
+      const createdDocument = await createDocument(
+        token,
+        title.trim(),
+        subjectIdValue,
+      );
       const docId = createdDocument.id;
 
       if (file) {
@@ -61,13 +76,17 @@ export function SubjectPage() {
 
       const detail = await getDocumentById(token, docId);
       const nextDocs = await getDocuments(token);
-      setDocuments(nextDocs.filter((document) => document.subject.id === subjectIdValue));
-      setTitle('');
+      setDocuments(
+        nextDocs.filter((document) => document.subject.id === subjectIdValue),
+      );
+      setTitle("");
       setFile(null);
 
       navigate(`/documents/${detail.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to create document.');
+      setError(
+        err instanceof Error ? err.message : "Unable to create document.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -78,9 +97,11 @@ export function SubjectPage() {
       <div className="page-header">
         <div>
           <p className="eyebrow">Subject</p>
-          <h1>{subjectName || 'Subject'}</h1>
+          <h1>{subjectName || "Subject"}</h1>
         </div>
-        <Link to="/" className="secondary-button">Back to dashboard</Link>
+        <Link to="/" className="secondary-button">
+          Back to dashboard
+        </Link>
       </div>
 
       <div className="panel">
@@ -89,18 +110,31 @@ export function SubjectPage() {
             <h3>Create document</h3>
             <label>
               <span>Document title</span>
-              <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Computer Networks" />
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Computer Networks"
+              />
             </label>
 
             <label>
               <span>Upload PDF</span>
-              <input type="file" accept="application/pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              />
             </label>
 
             {error && <div className="error-box">{error}</div>}
 
-            <button type="button" className="primary-button" onClick={handleCreateDocument} disabled={isSubmitting || !title.trim()}>
-              {isSubmitting ? 'Creating document...' : 'Create document'}
+            <button
+              type="button"
+              className="primary-button"
+              onClick={handleCreateDocument}
+              disabled={isSubmitting || !title.trim()}
+            >
+              {isSubmitting ? "Creating document..." : "Create document"}
             </button>
           </div>
 
@@ -117,12 +151,18 @@ export function SubjectPage() {
             ) : (
               <div className="document-list">
                 {documents.map((document) => (
-                  <Link key={document.id} to={`/documents/${document.id}`} className="document-item">
+                  <Link
+                    key={document.id}
+                    to={`/documents/${document.id}`}
+                    className="document-item"
+                  >
                     <div>
                       <strong>{document.title}</strong>
                       <small>{document.subject.name}</small>
                     </div>
-                    <span>{new Date(document.createdAt).toLocaleDateString()}</span>
+                    <span>
+                      {new Date(document.createdAt).toLocaleDateString()}
+                    </span>
                   </Link>
                 ))}
               </div>
