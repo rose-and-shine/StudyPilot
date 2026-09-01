@@ -23,3 +23,25 @@ export async function getSubjectById(token: string, subjectId: string) {
     token,
   );
 }
+
+export async function updateSubject(token: string, subjectId: string, name: string) {
+  return apiRequest<Subject>(
+    `/subjects/${subjectId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    },
+    token,
+  );
+}
+
+export async function deleteSubject(token: string, subjectId: string) {
+  return apiRequest<{ message: string }>(
+    `/subjects/${subjectId}`,
+    {
+      method: "DELETE",
+    },
+    token,
+  );
+}
+

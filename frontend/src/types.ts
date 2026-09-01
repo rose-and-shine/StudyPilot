@@ -102,3 +102,11 @@ export type QuizSubmission = {
   percentage: number;
   results: QuizResultItem[];
 };
+
+export type ToastType = 'success' | 'error' | 'info';
+
+export type Toast = {
+  id: string;
+  type: ToastType;
+  message: string;
+};
