@@ -115,7 +115,6 @@ export class DocumentsService {
 
     const storagePath = `${documentId}/v${nextVersion}.pdf`;
 
-    // Extract text from PDF
     const parser = new PDFParse({
       data: file.buffer,
     });
@@ -129,14 +128,12 @@ export class DocumentsService {
       await parser.destroy();
     }
 
-    // Upload PDF to Supabase
     await this.storageService.uploadFile(
       storagePath,
       file.buffer,
       file.mimetype,
     );
 
-    // Save document version
     const documentVersion = this.documentVersionRepository.create({
       document,
       version: nextVersion,
@@ -425,7 +422,6 @@ export class DocumentsService {
 
     const batches = this.aiBatchService.createBatches(chunks);
 
-    // Summarize each batch
     const sectionSummaries: string[] = [];
 
     for (const batch of batches) {
@@ -434,7 +430,6 @@ export class DocumentsService {
       sectionSummaries.push(summary);
     }
 
-    // Combine section summaries
     const finalSummary =
       sectionSummaries.length === 1
         ? sectionSummaries[0]
@@ -447,7 +442,6 @@ export class DocumentsService {
     };
   }
   async generateFlashcards(documentId: string, user: User) {
-    // 1. Verify that the document belongs to the authenticated user
     const document = await this.documentRepository.findOne({
       where: {
         id: documentId,
@@ -461,7 +455,6 @@ export class DocumentsService {
       throw new NotFoundException('Document not found');
     }
 
-    // 2. Get the latest uploaded version
     const latestVersion = await this.documentVersionRepository.findOne({
       where: {
         document: {
@@ -477,7 +470,6 @@ export class DocumentsService {
       throw new NotFoundException('No uploaded file found for this document');
     }
 
-    // 3. Get all text chunks for the latest version
     const chunks = await this.documentChunkRepository.find({
       where: {
         documentVersion: {
@@ -493,14 +485,12 @@ export class DocumentsService {
       throw new NotFoundException('No text chunks found for this document');
     }
 
-    // 4. Divide chunks into batches
     const batches = this.aiBatchService.createBatches(chunks);
 
     console.log(`Generating flashcards for document ${documentId}`);
     console.log(`Chunks: ${chunks.length}`);
     console.log(`Batches: ${batches.length}`);
 
-    // 5. Generate candidate flashcards from each batch
     const generatedFlashcards: {
       question: string;
       answer: string;
@@ -514,7 +504,6 @@ export class DocumentsService {
 
     console.log('Generated candidate flashcards:', generatedFlashcards.length);
 
-    // 6. Select the best flashcards and limit final result to 10
     let finalFlashcards = generatedFlashcards;
 
     if (generatedFlashcards.length > 10) {
@@ -524,20 +513,16 @@ export class DocumentsService {
       );
     }
 
-    // Extra safety: never save more than 10
     finalFlashcards = finalFlashcards.slice(0, 10);
 
     console.log('Final flashcards:', finalFlashcards.length);
 
-    // 7. Remove existing flashcards for this document version
-    // This makes regeneration replace the old set
     await this.flashcardRepository.delete({
       documentVersion: {
         id: latestVersion.id,
       },
     });
 
-    // 8. Convert generated flashcards into database entities
     const flashcards = finalFlashcards.map((flashcard) =>
       this.flashcardRepository.create({
         documentVersion: latestVersion,
@@ -546,10 +531,8 @@ export class DocumentsService {
       }),
     );
 
-    // 9. Save final flashcards
     const savedFlashcards = await this.flashcardRepository.save(flashcards);
 
-    // 10. Return the saved flashcards
     return {
       documentId: document.id,
       version: latestVersion.version,
@@ -611,7 +594,6 @@ export class DocumentsService {
     };
   }
   async generateQuiz(documentId: string, user: User) {
-    // 1. Verify document ownership
     const document = await this.documentRepository.findOne({
       where: {
         id: documentId,
@@ -625,7 +607,6 @@ export class DocumentsService {
       throw new NotFoundException('Document not found');
     }
 
-    // 2. Get latest document version
     const latestVersion = await this.documentVersionRepository.findOne({
       where: {
         document: {
@@ -641,7 +622,6 @@ export class DocumentsService {
       throw new NotFoundException('No uploaded file found for this document');
     }
 
-    // 3. Get chunks for latest version
     const chunks = await this.documentChunkRepository.find({
       where: {
         documentVersion: {
@@ -657,14 +637,12 @@ export class DocumentsService {
       throw new NotFoundException('No text chunks found for this document');
     }
 
-    // 4. Create batches
     const batches = this.aiBatchService.createBatches(chunks);
 
     console.log(`Generating quiz for document ${documentId}`);
     console.log(`Chunks: ${chunks.length}`);
     console.log(`Batches: ${batches.length}`);
 
-    // 5. Generate candidate questions
     const generatedQuiz: {
       question: string;
       options: string[];
@@ -680,26 +658,22 @@ export class DocumentsService {
 
     console.log('Generated candidate questions:', generatedQuiz.length);
 
-    // 6. Select best questions if there are more than 10
     let finalQuiz = generatedQuiz;
 
     if (generatedQuiz.length > 10) {
       finalQuiz = await this.aiService.selectBestQuiz(generatedQuiz, 10);
     }
 
-    // Extra safety: never save more than 10 questions
     finalQuiz = finalQuiz.slice(0, 10);
 
     console.log('Final quiz questions:', finalQuiz.length);
 
-    // 7. Delete previous quiz for this document version
     await this.quizRepository.delete({
       documentVersion: {
         id: latestVersion.id,
       },
     });
 
-    // 8. Create database entities
     const quizQuestions = finalQuiz.map((item) =>
       this.quizRepository.create({
         documentVersion: latestVersion,
@@ -710,10 +684,8 @@ export class DocumentsService {
       }),
     );
 
-    // 9. Save final quiz
     const savedQuiz = await this.quizRepository.save(quizQuestions);
 
-    // 10. Return result
     return {
       documentId: document.id,
       version: latestVersion.version,
@@ -781,7 +753,6 @@ export class DocumentsService {
     submitQuizDto: SubmitQuizDto,
     user: User,
   ) {
-    // Check document ownership
     const document = await this.documentRepository.findOne({
       where: {
         id: documentId,
@@ -795,7 +766,6 @@ export class DocumentsService {
       throw new NotFoundException('Document not found');
     }
 
-    // Get latest document version
     const latestVersion = await this.documentVersionRepository.findOne({
       where: {
         document: {
@@ -811,7 +781,6 @@ export class DocumentsService {
       throw new NotFoundException('No uploaded file found for this document');
     }
 
-    // Get quiz questions
     const quizQuestions = await this.quizRepository.find({
       where: {
         documentVersion: {
@@ -827,7 +796,6 @@ export class DocumentsService {
       throw new NotFoundException('No quiz found for this document');
     }
 
-    // Prevent duplicate question IDs in submission
     const submittedQuestionIds = submitQuizDto.answers.map(
       (answer) => answer.questionId,
     );
@@ -836,7 +804,6 @@ export class DocumentsService {
       throw new BadRequestException('Duplicate question IDs are not allowed');
     }
 
-    // Make sure every submitted question belongs to this quiz
     const quizQuestionMap = new Map(
       quizQuestions.map((question) => [question.id, question]),
     );
@@ -849,7 +816,6 @@ export class DocumentsService {
       }
     }
 
-    // Calculate score
     let score = 0;
 
     const results = quizQuestions.map((question) => {
@@ -857,7 +823,6 @@ export class DocumentsService {
         (answer) => answer.questionId === question.id,
       );
 
-      // If the user didn't answer this question
       if (!submittedAnswer) {
         return {
           questionId: question.id,

@@ -31,7 +31,6 @@ export class ChunkingService {
           chunks.push(chunk);
         }
 
-        // Keep complete sentences for overlap
         const overlapSentences: string[] = [];
         let overlapLength = 0;
 

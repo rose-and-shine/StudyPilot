@@ -1,14 +1,14 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 
 @Injectable()
 export class AiService {
-  private readonly ai: GoogleGenAI;
+  private readonly ai: Groq;
 
   constructor(private readonly configService: ConfigService) {
-    this.ai = new GoogleGenAI({
-      apiKey: this.configService.getOrThrow<string>('GEMINI_API_KEY'),
+    this.ai = new Groq({
+      apiKey: this.configService.getOrThrow<string>('GROQ_API_KEY'),
     });
   }
   private async generateWithRetry(
@@ -19,38 +19,40 @@ export class AiService {
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const response = await this.ai.models.generateContent({
-          model: 'gemini-3.5-flash',
-          contents: prompt,
+        const response = await this.ai.chat.completions.create({
+          model: 'openai/gpt-oss-20b',
+          messages: [
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
         });
 
-        if (!response.text) {
-          throw new Error('Gemini returned an empty response');
+        const responseText = response.choices[0]?.message?.content;
+
+        if (!responseText) {
+          throw new Error('Groq returned an empty response');
         }
 
-        return response.text;
+        return responseText;
       } catch (error: any) {
         lastError = error;
 
         const status = error?.status;
         const errorMessage = error?.message || '';
 
-        // Daily quota exhausted.
-        // Retrying will not help.
-        if (
-          status === 429 &&
-          (errorMessage.includes('quota') ||
-            errorMessage.includes('RESOURCE_EXHAUSTED') ||
-            errorMessage.includes('GenerateRequestsPerDay'))
-        ) {
-          console.error('Gemini daily quota exhausted.');
-          throw new ServiceUnavailableException(
-            'Gemini daily quota has been exhausted. Please try again later.',
-          );
+        if (status === 401 || status === 403) {
+          throw error;
         }
 
-        // Retry only temporary errors.
-        if (status !== 429 && status !== 500 && status !== 503) {
+        if (
+          status !== 429 &&
+          status !== 500 &&
+          status !== 502 &&
+          status !== 503 &&
+          status !== 504
+        ) {
           throw error;
         }
 
@@ -61,14 +63,14 @@ export class AiService {
         const delay = 1000 * Math.pow(2, attempt);
 
         console.log(
-          `Gemini request failed (${status}). ` + `Retrying in ${delay}ms...`,
+          `Groq request failed (${status}). Retrying in ${delay}ms...`,
         );
 
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
 
-    console.error('Gemini request failed after retries:', lastError);
+    console.error('Groq request failed after retries:', lastError);
 
     throw new ServiceUnavailableException(
       'AI service is temporarily unavailable. Please try again later.',
@@ -124,22 +126,28 @@ ${text}
     const responseText = await this.generateWithRetry(prompt);
 
     if (!responseText) {
-      throw new Error('Gemini returned an empty summary');
+      throw new Error('Groq returned an empty summary');
     }
 
     return responseText;
   }
   async generateFinalSummary(summaries: string[]): Promise<string> {
-    const combinedSummaries = summaries
-      .map((summary, index) => `[Section ${index + 1}]\n${summary}`)
-      .join('\n\n');
+    if (summaries.length === 0) {
+      throw new Error('No summaries provided');
+    }
 
-    const prompt = `
+    if (summaries.length <= 3) {
+      const combinedSummaries = summaries
+        .map((summary, index) => `[Section ${index + 1}]\n${summary}`)
+        .join('\n\n');
+
+      const prompt = `
 You are StudyPilot, an AI study assistant.
 
 Create a final study summary from the section summaries below.
 
 Rules:
+
 - Use ONLY the information contained in the provided summaries.
 - Combine overlapping information intelligently.
 - Preserve important concepts, definitions, facts, and relationships.
@@ -149,16 +157,90 @@ Rules:
 - Make the summary useful for exam revision.
 
 SECTION SUMMARIES:
+
 ${combinedSummaries}
 `;
 
-    const responseText = await this.generateWithRetry(prompt);
+      const responseText = await this.generateWithRetry(prompt);
 
-    if (!responseText) {
-      throw new Error('Gemini returned an empty final summary');
+      if (!responseText) {
+        throw new Error('Groq returned an empty final summary');
+      }
+
+      return responseText;
     }
 
-    return responseText;
+    // For larger documents, reduce summaries in batches.
+    const batchSize = 3;
+    const intermediateSummaries: string[] = [];
+
+    for (let i = 0; i < summaries.length; i += batchSize) {
+      const batch = summaries.slice(i, i + batchSize);
+
+      const combinedBatch = batch
+        .map((summary, index) => `[Section ${i + index + 1}]\n${summary}`)
+        .join('\n\n');
+
+      const prompt = `
+You are StudyPilot, an AI study assistant.
+
+Combine the following section summaries into one concise study summary.
+
+Rules:
+
+- Use ONLY the information provided.
+- Preserve important concepts, definitions, facts, and relationships.
+- Do not add outside information.
+- Remove unnecessary repetition.
+- Do not omit important technical details.
+- Organize the result clearly for exam revision.
+
+SECTION SUMMARIES:
+
+${combinedBatch}
+`;
+
+      const responseText = await this.generateWithRetry(prompt);
+
+      if (!responseText) {
+        throw new Error('Groq returned an empty intermediate summary');
+      }
+
+      intermediateSummaries.push(responseText);
+    }
+
+    // Combine the intermediate summaries into the final summary.
+    const finalContext = intermediateSummaries
+      .map((summary, index) => `[Part ${index + 1}]\n${summary}`)
+      .join('\n\n');
+
+    const finalPrompt = `
+You are StudyPilot, an AI study assistant.
+
+Create the final study summary from the summarized sections below.
+
+Rules:
+
+- Use ONLY the information contained in the provided summaries.
+- Combine overlapping information intelligently.
+- Preserve important concepts, definitions, facts, and relationships.
+- Do not introduce outside information.
+- Avoid unnecessary repetition.
+- Organize the result with clear headings and bullet points.
+- Make the summary useful for exam revision.
+
+SUMMARIZED SECTIONS:
+
+${finalContext}
+`;
+
+    const finalResponse = await this.generateWithRetry(finalPrompt);
+
+    if (!finalResponse) {
+      throw new Error('Groq returned an empty final summary');
+    }
+
+    return finalResponse;
   }
   async generateFlashcards(
     context: string,
@@ -218,7 +300,7 @@ ${context}
 
       return flashcards.slice(0, maxCount);
     } catch {
-      throw new Error('Gemini returned invalid flashcard JSON');
+      throw new Error('Groq returned invalid flashcard JSON');
     }
   }
   async generateQuiz(
@@ -297,7 +379,7 @@ ${context}
 
       return quiz.slice(0, maxCount);
     } catch {
-      throw new Error('Gemini returned invalid quiz JSON');
+      throw new Error('Groq returned invalid quiz JSON');
     }
   }
   async selectBestFlashcards(
@@ -367,7 +449,7 @@ ${JSON.stringify(flashcards)}
 
       return selected.slice(0, maxCount);
     } catch {
-      throw new Error('Gemini returned invalid flashcard selection JSON');
+      throw new Error('Groq returned invalid flashcard selection JSON');
     }
   }
   async selectBestQuiz(
@@ -454,7 +536,7 @@ ${JSON.stringify(questions)}
 
       return selected.slice(0, maxCount);
     } catch {
-      throw new Error('Gemini returned invalid quiz selection JSON');
+      throw new Error('Groq returned invalid quiz selection JSON');
     }
   }
 }

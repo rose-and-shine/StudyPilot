@@ -342,6 +342,9 @@ h2 {
 }
 
 .document-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
   background: rgba(255,255,255,0.6);
   border: 1px solid var(--stroke);
   border-radius: 16px;
@@ -500,6 +503,82 @@ h2 {
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 1rem;
+}
+
+.summary-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  line-height: 1.8;
+  color: #1f2937;
+  max-height: 72vh;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  scrollbar-width: thin;
+}
+
+.summary-box h1,
+.summary-box h2,
+.summary-box h3,
+.summary-box h4,
+.summary-box h5,
+.summary-box h6 {
+  margin-top: 0.5rem;
+  margin-bottom: 0.45rem;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+  color: #0f172a;
+}
+
+.summary-box h1 {
+  font-size: 2.4rem;
+}
+
+.summary-box h2 {
+  font-size: 1.9rem;
+}
+
+.summary-box h3 {
+  font-size: 1.5rem;
+}
+
+.summary-box p,
+.summary-box ul,
+.summary-box ol,
+.summary-box li,
+.summary-box pre,
+.summary-box code {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.summary-box ul,
+.summary-box ol {
+  padding-left: 1.5rem;
+}
+
+.summary-box li + li {
+  margin-top: 0.2rem;
+}
+
+.summary-box strong {
+  font-weight: 700;
+}
+
+.summary-box em {
+  font-style: italic;
+}
+
+.summary-box code {
+  background: rgba(148, 163, 184, 0.12);
+  border-radius: 6px;
+  padding: 0.1rem 0.35rem;
+}
+
+.summary-box hr {
+  border: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.35);
+  margin: 0.5rem 0;
 }
 
 @media (max-width: 760px) {

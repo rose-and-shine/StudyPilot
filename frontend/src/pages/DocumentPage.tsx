@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   askDocument,
@@ -20,12 +21,51 @@ import type {
   QuizSubmission,
 } from '../types';
 
+function formatSummaryMarkdown(rawSummary: string): string {
+  if (!rawSummary) {
+    return '';
+  }
+
+  const lines = rawSummary.replace(/\r/g, '\n').split('\n');
+
+  return lines
+    .map((line) => {
+      const trimmed = line.trim();
+
+      if (!trimmed || !trimmed.includes('|')) {
+        return trimmed || '';
+      }
+
+      const cells = trimmed
+        .split('|')
+        .map((cell) => cell.trim())
+        .filter(Boolean)
+        .filter((cell) => !/^[-:]+$/.test(cell) && !/^-{3,}$/.test(cell));
+
+      if (cells.length < 2) {
+        return trimmed;
+      }
+
+      if (cells.length % 2 === 0) {
+        return Array.from({ length: cells.length / 2 }, (_, index) => {
+          const key = cells[index * 2];
+          const value = cells[index * 2 + 1];
+          return `- ${key}: ${value}`;
+        }).join('\n');
+      }
+
+      return `- ${cells.join(' — ')}`;
+    })
+    .filter((line) => line.trim().length > 0)
+    .join('\n\n');
+}
+
 export function DocumentPage() {
   const { documentId } = useParams();
   const navigate = useNavigate();
   const { token } = useAuth();
   const [document, setDocument] = useState<DocumentDetail | null>(null);
-  const [activeTab, setActiveTab] = useState<'ask' | 'flashcards' | 'quiz'>('ask');
+  const [activeTab, setActiveTab] = useState<'ask' | 'summary' | 'flashcards' | 'quiz'>('ask');
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState<AskDocumentResponse | null>(null);
   const [summary, setSummary] = useState<string>('');
@@ -112,7 +152,7 @@ export function DocumentPage() {
 
     try {
       const result = await summarizeDocument(token, documentIdValue);
-      setSummary(result.summary);
+      setSummary(formatSummaryMarkdown(result.summary));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to generate document summary.');
     } finally {
@@ -199,6 +239,7 @@ export function DocumentPage() {
 
       <div className="tab-row document-tabs" role="tablist" aria-label="Document tools">
         <button type="button" className={activeTab === 'ask' ? 'tab active' : 'tab'} onClick={() => setActiveTab('ask')}>Ask AI</button>
+        <button type="button" className={activeTab === 'summary' ? 'tab active' : 'tab'} onClick={() => setActiveTab('summary')}>Summary</button>
         <button type="button" className={activeTab === 'flashcards' ? 'tab active' : 'tab'} onClick={() => setActiveTab('flashcards')}>Flashcards</button>
         <button type="button" className={activeTab === 'quiz' ? 'tab active' : 'tab'} onClick={() => setActiveTab('quiz')}>Quiz</button>
       </div>
@@ -215,27 +256,37 @@ export function DocumentPage() {
               rows={4}
               placeholder="Ask a question based on your study material..."
             />
-            <div className="dual-action-row">
-              <button type="button" className="primary-button" onClick={handleAsk} disabled={isQuestionLoading || !question.trim()}>
-                {isQuestionLoading ? 'Studying your document...' : 'Ask'}
-              </button>
-              <button type="button" className="secondary-button" onClick={handleSummary} disabled={isSummaryLoading}>
-                {isSummaryLoading ? 'Summarizing...' : 'Summary'}
-              </button>
-            </div>
+            <button type="button" className="primary-button" onClick={handleAsk} disabled={isQuestionLoading || !question.trim()}>
+              {isQuestionLoading ? 'Studying your document...' : 'Ask'}
+            </button>
           </div>
-
-          {summary && (
-            <div className="answer-box">
-              <h3>Document Summary</h3>
-              <p>{summary}</p>
-            </div>
-          )}
 
           {answer && (
             <div className="answer-box">
               <h3>AI Answer</h3>
               <p>{answer.answer}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'summary' && (
+        <div className="panel">
+          <div className="toolbar-row">
+            <h2>Document Summary</h2>
+            <button type="button" className="secondary-button" onClick={handleSummary} disabled={isSummaryLoading}>
+              {isSummaryLoading ? 'Summarizing...' : 'Generate Summary'}
+            </button>
+          </div>
+
+          {summary ? (
+            <div className="summary-box">
+              <ReactMarkdown>{summary}</ReactMarkdown>
+            </div>
+          ) : (
+            <div className="empty-box">
+              <p>No summary yet.</p>
+              <p>Generate a concise summary of this document.</p>
             </div>
           )}
         </div>
@@ -297,6 +348,7 @@ export function DocumentPage() {
                     <strong>Question {index + 1}</strong>
                     <span>{result.correct ? '✓ Correct' : '✗ Incorrect'}</span>
                   </div>
+                  <p><strong>Question:</strong> {result.question}</p>
                   <p><strong>Your answer:</strong> {result.selectedAnswer ?? 'No answer'}</p>
                   <p><strong>Correct answer:</strong> {result.correctAnswer}</p>
                   <p><strong>Explanation:</strong> {result.explanation}</p>

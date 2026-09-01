@@ -17,7 +17,6 @@ export class RagService {
   ) {}
 
   async retrieveRelevantChunks(document: Document, question: string) {
-    // Get latest version of the document
     const documentVersionRepository =
       this.dataSource.getRepository(DocumentVersion);
 
@@ -36,13 +35,11 @@ export class RagService {
       throw new NotFoundException('No uploaded file found for this document');
     }
 
-    // Generate embedding for the question
     const queryEmbedding =
       await this.embeddingsService.generateEmbedding(question);
 
     const embeddingString = `[${queryEmbedding.join(',')}]`;
 
-    // Search using pgvector
     const results = await this.dataSource
       .getRepository(DocumentChunk)
       .createQueryBuilder('chunk')
@@ -56,13 +53,11 @@ export class RagService {
       .limit(this.TOP_K)
       .getRawAndEntities();
 
-    // Convert distance → similarity
     const retrievedResults = results.entities.map((chunk, index) => ({
       chunk,
       similarity: 1 - Number(results.raw[index].distance),
     }));
 
-    // Apply similarity threshold
     return retrievedResults.filter(
       (result) => result.similarity >= this.MIN_SIMILARITY,
     );
